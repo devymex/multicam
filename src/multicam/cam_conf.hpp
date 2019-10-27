@@ -8,8 +8,6 @@ class CameraConfig {
 public:
 	CameraConfig(flir::GenApi::INodeMap &nodeMap);
 
-	void ConfigByJson(const std::string &strJsonFile);
-
 	void SetPixelFormat(const std::string &strPixelFormat);
 
 	// Set to auto framerate if less than 0

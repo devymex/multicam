@@ -89,12 +89,12 @@ void CameraConfig::SetTriggerDevice(const std::string &strTriggerDevice) {
 
 // Set to maximum framerate if less than 0
 void CameraConfig::SetFrameRate(float fFrameRate) {
+	SetParam(m_NodeMap, "TriggerMode", "Off");
 	std::string strKey = "AcquisitionFrameRateEnabled";
 	if (!flir::GenApi::IsAvailable(m_NodeMap.GetNode(strKey.c_str()))) {
 		strKey = "AcquisitionFrameRateEnable";
 		CHECK(flir::GenApi::IsAvailable(m_NodeMap.GetNode(strKey.c_str())));
 	}
-	SetParam(m_NodeMap, "TriggerMode", "Off");
 	if (fFrameRate < 0.f) {
 		SetParam(m_NodeMap, strKey, false);
 		SetParam(m_NodeMap, "AcquisitionFrameRateAuto", "Continuous");

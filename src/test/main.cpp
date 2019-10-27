@@ -6,7 +6,7 @@
 
 int main(int nArgCnt, char *ppArgs[]) {
 	MultipleCameras multiCam("Software");
-	multiCam.Initialize(20000);
+	multiCam.Initialize(18000, "config");
 	CTimer t;
 	for (int iFrame = 1; ; ++iFrame) {
 		std::vector<cv::Mat> images;

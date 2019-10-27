@@ -1,7 +1,8 @@
 
 #include "multicam/multicam.hpp"
 
-#include <condition_variable>
+#include <algorithm>
+#include <fstream>
 #include <mutex>
 #include <thread>
 
@@ -10,9 +11,11 @@
 #include <SpinGenApi/SpinnakerGenApi.h>
 
 #include "multicam/ctimer.hpp"
+#include "json.hpp"
 #include "trigger.hpp"
 #include "cam_conf.hpp"
 #include "flir_inst.hpp"
+
 
 class MultipleCameras::MultipleCamerasImpl {
 public:
@@ -37,38 +40,15 @@ public:
 		}
 	}
 
-	void Initialize(uint32_t nExpoMicroSec) {
+	void Initialize(uint32_t nExpoMicroSec, const std::string &strConfRoot) {
 		if (m_pTrigger != nullptr) {
 			m_pTrigger->SetDelay(nExpoMicroSec);
 		}
 		auto pCamList = FlirInstance::GetCameraList();
 		CHECK_GT(pCamList->GetSize(), 0);
 		for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
-			auto pCam = pCamList->GetByIndex(i);
-			CHECK(!pCam->IsInitialized()) << "Double initialized!";
-			pCam->Init();
-			auto &nodeMap = pCam->GetNodeMap();
-
-			CameraConfig camConf(nodeMap);
-			camConf.SetPixelFormat("YCbCr8_CbYCr");
-			camConf.SetSaturation(100.f);
-			camConf.SetGamma(1.f);
-			camConf.SetFrameRate(0.f);
-			camConf.SetWhiteBalance(-1.f, -1.f);
-			camConf.SetExposure((float)nExpoMicroSec);
-			camConf.SetGain(5.f);
-			if (m_pTrigger == nullptr) {
-				camConf.SetTriggerDevice("Off");
-			} else {
-				if (m_pTrigger->GetDevice() == "Software") {
-					camConf.SetTriggerDevice("Software");
-				} else {
-					camConf.SetTriggerDevice("Line0");
-				}
-			}
-			//SetParam(pCam->GetTLStreamNodeMap(), "StreamBufferCountMode", "Manual");
-			//SetParam(pCam->GetTLStreamNodeMap(), "StreamBufferCountManual", 1);
-			pCam->BeginAcquisition();
+			__InitializeCamera(pCamList->GetByIndex(i),
+					nExpoMicroSec, strConfRoot);
 		}
 		__Trigger();
 	}
@@ -154,6 +134,61 @@ private:
 		}
 	}
 
+	void __InitializeCamera(flir::CameraPtr pCam, uint32_t nExpoMicroSec,
+			const std::string &strConfRoot) {
+		CHECK(!pCam->IsInitialized()) << "Double initialized!";
+
+		flir::GenApi::CStringPtr ptrDeviceModelName =
+				pCam->GetTLDeviceNodeMap().GetNode("DeviceModelName");
+		std::string strDeviceModel = ptrDeviceModelName->ToString().c_str();
+		std::replace(strDeviceModel.begin(), strDeviceModel.end(), ' ', '_');
+		std::string strConfFileName = strConfRoot + "/"
+				+ strDeviceModel + ".json";
+		nlohmann::json jConf;
+		std::ifstream confFile(strConfFileName);
+		if(confFile.is_open()) {
+			confFile >> jConf;
+		}
+		pCam->Init();
+		CameraConfig camConf(pCam->GetNodeMap());
+		for (auto jItem = jConf.begin(); jItem != jConf.end(); ++jItem) {
+			if (jItem.key() == "Gamma") {
+				camConf.SetGamma(jItem.value().get<float>());
+			} else if (jItem.key() == "Saturation") {
+				camConf.SetSaturation(jItem.value().get<float>());
+			} else if (jItem.key() == "PixelFormat") {
+				camConf.SetPixelFormat(jItem.value().get<std::string>());
+			} else if (jItem.key() == "WhiteBalance") {
+				auto fWhiteBalance = jItem.value().get<float>();
+				camConf.SetWhiteBalance(fWhiteBalance, fWhiteBalance);
+			} else if (jItem.key() == "Gain") {
+				camConf.SetGain(jItem.value().get<float>());
+			}
+		}
+		camConf.SetExposure(nExpoMicroSec);
+		camConf.SetFrameRate(__GetConfigValue(jConf, "FrameRate", 0.f));
+		if (m_pTrigger == nullptr) {
+			camConf.SetTriggerDevice("Off");
+		} else {
+			if (m_pTrigger->GetDevice() == "Software") {
+				camConf.SetTriggerDevice("Software");
+			} else {
+				camConf.SetTriggerDevice("Line0");
+			}
+		}
+		pCam->BeginAcquisition();
+	}
+
+	template<typename _Ty>
+	_Ty __GetConfigValue(nlohmann::json &jConf, const std::string &strKey,
+			const _Ty &defaultValue) {
+		auto jItem = jConf.find(strKey);
+		if (jItem != jConf.end()) {
+			return jItem->get<_Ty>();
+		}
+		return defaultValue;
+	}
+
 private:
 	std::unique_ptr<Trigger> m_pTrigger;
 	std::vector<cv::Mat> m_ImgBuf;
@@ -169,8 +204,9 @@ MultipleCameras::~MultipleCameras() {
 	delete m_pImpl;
 }
 
-void MultipleCameras::Initialize(uint32_t nExpoMicroSec) {
-	m_pImpl->Initialize(nExpoMicroSec);
+void MultipleCameras::Initialize(uint32_t nExpoMicroSec,
+		const std::string &strConfRoot) {
+	m_pImpl->Initialize(nExpoMicroSec, strConfRoot);
 }
 
 void MultipleCameras::GetImages(std::vector<cv::Mat> &images) {

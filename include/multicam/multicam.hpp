@@ -11,7 +11,7 @@ public:
 
 	~MultipleCameras();
 
-	void Initialize(uint32_t nExpoMicroSec);
+	void Initialize(uint32_t nExpoMicroSec, const std::string &strConfRoot);
 
 	void GetImages(std::vector<cv::Mat> &images);
 
