@@ -15,6 +15,7 @@
 #include "trigger.hpp"
 #include "cam_conf.hpp"
 #include "flir_inst.hpp"
+#include "post_proc.hpp"
 
 
 class MultipleCameras::MultipleCamerasImpl {
@@ -100,18 +101,16 @@ private:
 		if (rawImgPtrs.size() == nCamCnt) {
 			m_ImgBuf.resize(nCamCnt);
 			//pragma omp parallel for
+			CTimer t;
 			for (uint32_t i = 0; i < nCamCnt; ++i) {
 				if (rawImgPtrs[i].IsValid()) {
 					if (!rawImgPtrs[i]->IsIncomplete()) {
-						auto pBgrImg = rawImgPtrs[i]->Convert(
-								flir::PixelFormat_BGR8, flir::HQ_LINEAR);
-						cv::Mat img(pBgrImg->GetHeight(), pBgrImg->GetWidth(),
-									CV_8UC3, pBgrImg->GetData());
-						m_ImgBuf[i] = img.clone();
+						m_ImgBuf[i] = PostProcess(rawImgPtrs[i]);
 					}
 					rawImgPtrs[i]->Release();
 				}
 			}
+			LOG(INFO) << t.Reset();
 		} else {
 			LOG(INFO) << "Lost frame!";
 		}
