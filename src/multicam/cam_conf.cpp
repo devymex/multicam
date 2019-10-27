@@ -127,7 +127,7 @@ void CameraConfig::SetSaturation(float fSaturation) {
 	if (fSaturation < 0.f) {
 		SetParam(m_NodeMap, "SaturationAuto", "Continuous");
 	} else {
-		SetParam(m_NodeMap, "ExposureAuto", "Off");
+		SetParam(m_NodeMap, "SaturationAuto", "Off");
 		SetParam(m_NodeMap, "Saturation", fSaturation);
 	}
 }

@@ -52,9 +52,6 @@ public:
 				m_Commanders.push_back(pTriggerCmd);
 			}
 		}
-		if (GetDelay() > 0) {
-			usleep(GetDelay());
-		}
 		for (auto ptr : m_Commanders) {
 			ptr->Execute();
 		}
@@ -80,9 +77,6 @@ public:
 	}
 
 	void operator()() override {
-		if (GetDelay() > 0) {
-			usleep(GetDelay());
-		}
 		int16_t nData = 1;
 		size_t nSentBytes = write(m_nDevHdl, &nData, sizeof(nData));
 		CHECK_EQ(nSentBytes, sizeof(nData));
@@ -105,7 +99,13 @@ Trigger::~Trigger() {
 	delete m_pImpl;
 }
 
-void Trigger::operator()() {
+void Trigger::operator()(int32_t nMicroseconds) {
+	if (nMicroseconds < 0) {
+		nMicroseconds = GetDelay();
+	}
+	if (nMicroseconds > 0) {
+		usleep(nMicroseconds);
+	}
 	(*m_pImpl)();
 }
 

@@ -21,7 +21,7 @@ public:
 	std::string GetDevice() const;
 
 protected:
-	void operator()();
+	void operator()(int32_t nMicroseconds = -1);
 
 protected:
 	std::string m_strDevice;

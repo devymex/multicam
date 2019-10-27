@@ -50,7 +50,7 @@ public:
 			__InitializeCamera(pCamList->GetByIndex(i),
 					nExpoMicroSec, strConfRoot);
 		}
-		__Trigger();
+		(*m_pTrigger)(500 * 1000);
 	}
 
 	void GetImages(std::vector<cv::Mat> &images) {
@@ -64,12 +64,11 @@ public:
 			__WorkerProc();
 		}
 		images.swap(m_ImgBuf);
-		__DoNextAsync();
+		__CaptureAsync();
 	}
 
 private:
-
-	void __DoNextAsync() {
+	void __CaptureAsync() {
 		m_WorkerThread = std::thread(&MultipleCamerasImpl::__WorkerProc, this);
 	}
 
@@ -97,7 +96,7 @@ private:
 				rawImgPtrs.clear();
 			}
 		}
-		__Trigger();
+		__TriggerAsync();
 		if (rawImgPtrs.size() == nCamCnt) {
 			m_ImgBuf.resize(nCamCnt);
 			//pragma omp parallel for
@@ -118,7 +117,7 @@ private:
 		}
 	}
 
-	void __Trigger() {
+	void __TriggerAsync() {
 		m_TriggerThread = std::thread(&MultipleCamerasImpl::__TriggerProc, this);
 	}
 
@@ -142,6 +141,7 @@ private:
 				pCam->GetTLDeviceNodeMap().GetNode("DeviceModelName");
 		std::string strDeviceModel = ptrDeviceModelName->ToString().c_str();
 		std::replace(strDeviceModel.begin(), strDeviceModel.end(), ' ', '_');
+		LOG(INFO) << "Camera: " << strDeviceModel;
 		std::string strConfFileName = strConfRoot + "/"
 				+ strDeviceModel + ".json";
 		nlohmann::json jConf;
