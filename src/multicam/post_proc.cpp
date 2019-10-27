@@ -11,7 +11,20 @@
 #include <nppi_geometry_transforms.h>
 #endif
 
-cv::Mat UYV2Mat(flir::ImagePtr pImg) {
+PostProcessor::~PostProcessor() {
+#ifdef WITH_CUDA
+	cudaFree(m_pBuffer);
+#endif
+}
+
+cv::Mat PostProcessor::operator()(flir::ImagePtr pRaw) {
+	if (pRaw->GetPixelFormat() == flir::PixelFormat_YUV8_UYV) {
+		return __UYV2Mat(pRaw);
+	}
+	return cv::Mat();
+}
+
+cv::Mat PostProcessor::__UYV2Mat(flir::ImagePtr pImg) {
 #ifdef WITH_CUDA
 	NppiSize srcSize = {(int)pImg->GetWidth(), (int)pImg->GetHeight()};
 	NppiSize dstSize = {srcSize.width / 2, srcSize.height / 2};
@@ -25,8 +38,7 @@ cv::Mat UYV2Mat(flir::ImagePtr pImg) {
 	uint32_t nDstStride = srcSize.width * nChannels;
 	uint32_t nDstBytes = srcSize.height * nDstStride;
 
-	uint8_t *pSrcBuf = nullptr;
-	cudaMalloc(&pSrcBuf, nSrcBytes + nDstBytes);
+	uint8_t *pSrcBuf = __RequestBuffer(nSrcBytes + nDstBytes);;
 	uint8_t *pDstBuf = pSrcBuf + nSrcBytes;
 
 	cudaMemcpy(pSrcBuf, pImg->GetData(), nSrcBytes, cudaMemcpyHostToDevice);
@@ -46,7 +58,6 @@ cv::Mat UYV2Mat(flir::ImagePtr pImg) {
 	cv::Mat img(dstSize.height, dstSize.width, CV_8UC3);
 	cudaMemcpy(img.data, pDstBuf, nDstBytes, cudaMemcpyDeviceToHost);
 
-	cudaFree(pDstBuf);
 	return img;
 #else
 	auto pBgrImg = pImg->Convert(flir::PixelFormat_BGR8, flir::HQ_LINEAR);
@@ -56,9 +67,12 @@ cv::Mat UYV2Mat(flir::ImagePtr pImg) {
 #endif
 }
 
-cv::Mat PostProcess(flir::ImagePtr pRaw) {
-	if (pRaw->GetPixelFormat() == flir::PixelFormat_YUV8_UYV) {
-		return UYV2Mat(pRaw);
+uint8_t* PostProcessor::__RequestBuffer(uint32_t nBytes) {
+	if (m_nBufSize < nBytes) {
+#ifdef WITH_CUDA
+		cudaFree(m_pBuffer);
+		cudaMalloc(&m_pBuffer, nBytes);
+#endif
 	}
-	return cv::Mat();
+	return (uint8_t*)m_pBuffer;
 }

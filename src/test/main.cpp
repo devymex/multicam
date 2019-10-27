@@ -30,8 +30,8 @@ int main(int nArgCnt, char *ppArgs[]) {
 		if (cycleTimer.size() > 10) {
 			cycleTimer.erase(cycleTimer.begin());
 		}
-		//LOG(INFO) << "FPS: " << (double)cycleTimer.size() /
-		//		std::accumulate(cycleTimer.begin(), cycleTimer.end(), 0.);
+		LOG(INFO) << "FPS: " << (double)cycleTimer.size() /
+				std::accumulate(cycleTimer.begin(), cycleTimer.end(), 0.);
 		if (27 == cv::waitKey(1)) {
 			break;
 		}

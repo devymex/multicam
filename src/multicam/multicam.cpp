@@ -104,7 +104,7 @@ private:
 			for (uint32_t i = 0; i < nCamCnt; ++i) {
 				if (rawImgPtrs[i].IsValid()) {
 					if (!rawImgPtrs[i]->IsIncomplete()) {
-						m_ImgBuf[i] = PostProcess(rawImgPtrs[i]);
+						m_ImgBuf[i] = m_PostProcessor(rawImgPtrs[i]);
 					}
 					rawImgPtrs[i]->Release();
 				}
@@ -192,6 +192,7 @@ private:
 	std::vector<cv::Mat> m_ImgBuf;
 	std::thread m_WorkerThread;
 	std::thread m_TriggerThread;
+	PostProcessor m_PostProcessor;
 };
 
 MultipleCameras::MultipleCameras(const std::string &strTriggerDevice) {
