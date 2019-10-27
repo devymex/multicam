@@ -89,16 +89,24 @@ void CameraConfig::SetTriggerDevice(const std::string &strTriggerDevice) {
 
 // Set to maximum framerate if less than 0
 void CameraConfig::SetFrameRate(float fFrameRate) {
+	std::string strKey = "AcquisitionFrameRateEnabled";
+	if (!flir::GenApi::IsAvailable(m_NodeMap.GetNode(strKey.c_str()))) {
+		strKey = "AcquisitionFrameRateEnable";
+		CHECK(flir::GenApi::IsAvailable(m_NodeMap.GetNode(strKey.c_str())));
+	}
 	SetParam(m_NodeMap, "TriggerMode", "Off");
 	if (fFrameRate < 0.f) {
-		SetParam(m_NodeMap, "AcquisitionFrameRateEnabled", false);
+		SetParam(m_NodeMap, strKey, false);
 		SetParam(m_NodeMap, "AcquisitionFrameRateAuto", "Continuous");
 	} else {
-		SetParam(m_NodeMap, "AcquisitionFrameRateEnabled", true);
-		SetParam(m_NodeMap, "AcquisitionFrameRateAuto", "Off");
+		SetParam(m_NodeMap, strKey, true);
+		if (strKey == "AcquisitionFrameRateEnabled") {
+			SetParam(m_NodeMap, "AcquisitionFrameRateAuto", "Off");
+		}
 		if (fFrameRate < 1.f) {
 			float fMin;
 			GetParamMinMax(m_NodeMap, "AcquisitionFrameRate", fMin, fFrameRate);
+			fFrameRate -= 0.01;
 		}
 		SetParam(m_NodeMap, "AcquisitionFrameRate", fFrameRate);
 	}
@@ -130,7 +138,7 @@ void CameraConfig::SetExposure(float fMicroseconds) {
 	} else {
 		SetParam(m_NodeMap, "ExposureAuto", "Off");
 		SetParam(m_NodeMap, "ExposureTime", fMicroseconds);
-		SetParam(m_NodeMap, "ExposureTimeAbs", fMicroseconds);
+		//SetParam(m_NodeMap, "ExposureTimeAbs", fMicroseconds);
 	}
 }
 

@@ -47,12 +47,13 @@ public:
 			auto &nodeMap = pCam->GetNodeMap();
 
 			CameraConfig camConf(nodeMap);
+			//camConf.SetPixelFormat("YCbCr8_CbYCr");
 			camConf.SetFrameRate(0.f);
 			camConf.SetWhiteBalance(-1.f, -1.f);
-			camConf.SetSaturation(100.f);
+			//camConf.SetSaturation(100.f);
 			camConf.SetExposure((float)nExpoMicroSec);
 			camConf.SetGain(15.f);
-			camConf.SetGamma(1.f);
+			//camConf.SetGamma(1.f);
 			if (m_pTrigger == nullptr) {
 				camConf.SetTriggerDevice("Off");
 			} else {
