@@ -8,31 +8,45 @@
 #include <cuda.h>
 #include <nppi_data_exchange_and_initialization.h>
 #include <nppi_color_conversion.h>
+#include <nppi_geometry_transforms.h>
 #endif
 
 cv::Mat UYV2Mat(flir::ImagePtr pImg) {
 #ifdef WITH_CUDA
-	NppiSize imgSize = {(int)pImg->GetWidth(), (int)pImg->GetHeight()};
+	NppiSize srcSize = {(int)pImg->GetWidth(), (int)pImg->GetHeight()};
+	NppiSize dstSize = {srcSize.width / 2, srcSize.height / 2};
+	NppiRect srcROI = {0, 0, srcSize.width, srcSize.height};
+	NppiRect dstROI = {0, 0, dstSize.width, dstSize.height};
+	uint32_t nChannels = pImg->GetNumChannels();
 
 	uint32_t nSrcStride = pImg->GetStride();
-	uint32_t nSrcBytes = imgSize.height * nSrcStride;
+	uint32_t nSrcBytes = srcSize.height * nSrcStride;
 
-	uint32_t nDstStride = imgSize.width * pImg->GetNumChannels();
-	uint32_t nDstBytes = imgSize.height * nDstStride;
+	uint32_t nDstStride = srcSize.width * nChannels;
+	uint32_t nDstBytes = srcSize.height * nDstStride;
 
-	uint8_t *pGpuBuf = nullptr;
-	cudaMalloc(&pGpuBuf, nSrcBytes + nDstBytes);
-	cudaMemcpy(pGpuBuf, pImg->GetData(), nSrcBytes, cudaMemcpyHostToDevice);
+	uint8_t *pSrcBuf = nullptr;
+	cudaMalloc(&pSrcBuf, nSrcBytes + nDstBytes);
+	uint8_t *pDstBuf = pSrcBuf + nSrcBytes;
+
+	cudaMemcpy(pSrcBuf, pImg->GetData(), nSrcBytes, cudaMemcpyHostToDevice);
 
 	int order[] = {1, 0, 2};
-	nppiSwapChannels_8u_C3IR(pGpuBuf, nSrcStride, imgSize, order);
-	nppiYUVToBGR_8u_C3R(pGpuBuf, pImg->GetStride(), pGpuBuf + nSrcBytes,
-			nDstStride, imgSize);
+	nppiSwapChannels_8u_C3IR(pSrcBuf, nSrcStride, srcSize, order);
+	nppiYUVToBGR_8u_C3R(pSrcBuf, pImg->GetStride(), pDstBuf,
+			nDstStride, srcSize);
 
-	cv::Mat img(pImg->GetHeight(), pImg->GetWidth(), CV_8UC3);
-	cudaMemcpy(img.data, pGpuBuf + nSrcBytes, nDstBytes, cudaMemcpyDeviceToHost);
+	std::swap(pDstBuf, pSrcBuf);
+	nDstStride = dstSize.width * nChannels;
+	nDstBytes = nDstStride * dstSize.height;
 
-	cudaFree(pGpuBuf);
+	nppiResize_8u_C3R(pSrcBuf, nSrcStride, srcSize, srcROI,
+			pDstBuf, nDstStride, dstSize, dstROI, NPPI_INTER_LINEAR);
+
+	cv::Mat img(dstSize.height, dstSize.width, CV_8UC3);
+	cudaMemcpy(img.data, pDstBuf, nDstBytes, cudaMemcpyDeviceToHost);
+
+	cudaFree(pDstBuf);
 	return img;
 #else
 	auto pBgrImg = pImg->Convert(flir::PixelFormat_BGR8, flir::HQ_LINEAR);

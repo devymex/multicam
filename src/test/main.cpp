@@ -21,7 +21,7 @@ int main(int nArgCnt, char *ppArgs[]) {
 		for (int i = 0; i < (int)images.size(); ++i) {
 			auto &img = images[i];
 			if (!img.empty()) {
-				cv::resize(img, img, img.size() / 2);
+				//cv::resize(img, img, img.size() / 2);
 				std::string strName = "img" + std::to_string(i);
 				cv::imshow(strName, img);
 			}

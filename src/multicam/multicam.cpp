@@ -100,8 +100,7 @@ private:
 		__TriggerAsync();
 		if (rawImgPtrs.size() == nCamCnt) {
 			m_ImgBuf.resize(nCamCnt);
-			//pragma omp parallel for
-			CTimer t;
+			//CTimer t;
 			for (uint32_t i = 0; i < nCamCnt; ++i) {
 				if (rawImgPtrs[i].IsValid()) {
 					if (!rawImgPtrs[i]->IsIncomplete()) {
@@ -110,7 +109,7 @@ private:
 					rawImgPtrs[i]->Release();
 				}
 			}
-			LOG(INFO) << t.Reset();
+			//LOG(INFO) << t.Reset();
 		} else {
 			LOG(INFO) << "Lost frame!";
 		}
