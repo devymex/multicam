@@ -19,18 +19,18 @@ public:
 	virtual ~TriggerImpl() {
 	}
 
-	inline void SetDelay(uint32_t nMilliseconds) {
-		m_nTriggerDelayMS = nMilliseconds;
+	inline void SetDelay(uint32_t nMicroseconds) {
+		m_nDelayMicroSec = nMicroseconds;
 	}
 
 	inline uint32_t GetDelay() const {
-		return m_nTriggerDelayMS;
+		return m_nDelayMicroSec;
 	}
 
 	virtual void operator()() = 0;
 
 private:
-	uint32_t m_nTriggerDelayMS { 0 };
+	uint32_t m_nDelayMicroSec { 0 };
 };
 
 class SoftwareTrigger : public Trigger::TriggerImpl {
@@ -51,6 +51,9 @@ public:
 				CHECK(flir::GenApi::IsWritable(pTriggerCmd));
 				m_Commanders.push_back(pTriggerCmd);
 			}
+		}
+		if (GetDelay() > 0) {
+			usleep(GetDelay());
 		}
 		for (auto ptr : m_Commanders) {
 			ptr->Execute();
@@ -77,8 +80,10 @@ public:
 	}
 
 	void operator()() override {
-		int16_t nData = GetDelay();
-		CHECK_LE(nData, 10000);
+		if (GetDelay() > 0) {
+			usleep(GetDelay());
+		}
+		int16_t nData = 1;
 		size_t nSentBytes = write(m_nDevHdl, &nData, sizeof(nData));
 		CHECK_EQ(nSentBytes, sizeof(nData));
 	}

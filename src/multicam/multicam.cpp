@@ -24,6 +24,7 @@ public:
 
 	~MultipleCamerasImpl() {
 		__WaitingForWorker();
+		__WaitingForTrigger();
 		auto pCamList = FlirInstance::GetCameraList();
 		for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
 			auto pCam = pCamList->GetByIndex(i);
@@ -37,7 +38,9 @@ public:
 	}
 
 	void Initialize(uint32_t nExpoMicroSec) {
-		m_nExpoMicroSec = nExpoMicroSec;
+		if (m_pTrigger != nullptr) {
+			m_pTrigger->SetDelay(nExpoMicroSec);
+		}
 		auto pCamList = FlirInstance::GetCameraList();
 		CHECK_GT(pCamList->GetSize(), 0);
 		for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
@@ -47,13 +50,13 @@ public:
 			auto &nodeMap = pCam->GetNodeMap();
 
 			CameraConfig camConf(nodeMap);
-			//camConf.SetPixelFormat("YCbCr8_CbYCr");
+			camConf.SetPixelFormat("YCbCr8_CbYCr");
+			camConf.SetSaturation(100.f);
+			camConf.SetGamma(1.f);
 			camConf.SetFrameRate(0.f);
 			camConf.SetWhiteBalance(-1.f, -1.f);
-			//camConf.SetSaturation(100.f);
 			camConf.SetExposure((float)nExpoMicroSec);
-			camConf.SetGain(15.f);
-			//camConf.SetGamma(1.f);
+			camConf.SetGain(5.f);
 			if (m_pTrigger == nullptr) {
 				camConf.SetTriggerDevice("Off");
 			} else {
@@ -67,6 +70,7 @@ public:
 			//SetParam(pCam->GetTLStreamNodeMap(), "StreamBufferCountManual", 1);
 			pCam->BeginAcquisition();
 		}
+		__Trigger();
 	}
 
 	void GetImages(std::vector<cv::Mat> &images) {
@@ -103,11 +107,7 @@ private:
 		std::vector<flir::ImagePtr> rawImgPtrs;
 		rawImgPtrs.resize(nCamCnt);
 
-		if (m_pTrigger != nullptr) {
-			auto nRealExpoMicroSec = (int32_t)(m_ExpTimer.Now() * 1000 * 1000);
-			usleep(std::max(0, (int32_t)m_nExpoMicroSec - nRealExpoMicroSec));
-			(*m_pTrigger)();
-		}
+		__WaitingForTrigger();
 		for (uint32_t i = 0; i < nCamCnt; ++i) {
 			auto pCam = pCamList->GetByIndex(i);
 			flir::ImagePtr pRawImg;
@@ -117,7 +117,7 @@ private:
 				rawImgPtrs.clear();
 			}
 		}
-		m_ExpTimer.Reset();
+		__Trigger();
 		if (rawImgPtrs.size() == nCamCnt) {
 			m_ImgBuf.resize(nCamCnt);
 			//pragma omp parallel for
@@ -138,13 +138,27 @@ private:
 		}
 	}
 
+	void __Trigger() {
+		m_TriggerThread = std::thread(&MultipleCamerasImpl::__TriggerProc, this);
+	}
+
+	void __WaitingForTrigger() {
+		if (m_TriggerThread.joinable()) {
+			m_TriggerThread.join();
+		}
+	}
+
+	void __TriggerProc() {
+		if (m_pTrigger != nullptr) {
+			(*m_pTrigger)();
+		}
+	}
+
 private:
 	std::unique_ptr<Trigger> m_pTrigger;
 	std::vector<cv::Mat> m_ImgBuf;
 	std::thread m_WorkerThread;
-
-	uint32_t m_nExpoMicroSec { 10000 };
-	CTimer m_ExpTimer;
+	std::thread m_TriggerThread;
 };
 
 MultipleCameras::MultipleCameras(const std::string &strTriggerDevice) {

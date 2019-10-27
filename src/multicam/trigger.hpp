@@ -14,7 +14,7 @@ public:
 
 	~Trigger();
 
-	void SetDelay(uint32_t nMilliseconds);
+	void SetDelay(uint32_t nMicroseconds);
 
 	uint32_t GetDelay() const;
 
