@@ -5,15 +5,13 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
-#include "trigger.hpp"
-
 class MultipleCameras {
 public:
-	MultipleCameras(Trigger *pTrigger);
+	MultipleCameras(const std::string &strTriggerDevice = "");
 
 	~MultipleCameras();
 
-	void Initialize(uint32_t nExpoMicroSec, float fGain = -1.f);
+	void Initialize(uint32_t nExpoMicroSec);
 
 	void GetImages(std::vector<cv::Mat> &images);
 

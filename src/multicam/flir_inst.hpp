@@ -20,19 +20,4 @@ private:
 	flir::SystemPtr m_pSys;
 };
 
-template<typename _Ty>
-_Ty GetNode(flir::GenApi::INodeMap &nodeMap, const std::string &strKey);
-
-void SetNodeParam(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
-		const char *pValue);
-
-void SetNodeParam(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
-		int32_t nValue);
-
-void SetNodeParam(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
-		bool bValue);
-
-void SetNodeParam(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
-		float fValue);
-
 #endif

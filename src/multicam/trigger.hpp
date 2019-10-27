@@ -14,16 +14,18 @@ public:
 
 	~Trigger();
 
-	void SetTriggerDelay(uint32_t nMilliseconds);
+	void SetDelay(uint32_t nMilliseconds);
 
-	uint32_t GetTriggerDelay() const;
+	uint32_t GetDelay() const;
+
+	std::string GetDevice() const;
 
 protected:
 	void operator()();
 
-	std::vector<std::pair<std::string, std::string>> GetCamConfigs() const;
-
 protected:
+	std::string m_strDevice;
+
 	TriggerImpl *m_pImpl;
 
 	friend class MultipleCameras;
