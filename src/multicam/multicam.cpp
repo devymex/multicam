@@ -9,36 +9,10 @@
 #include <Spinnaker.h>
 #include <SpinGenApi/SpinnakerGenApi.h>
 
+#include "multicam/ctimer.hpp"
 #include "flir_inst.hpp"
-#include "ctimer.hpp"
 
-class Semaphore {
-public:
-	void notify() {
-		std::lock_guard<decltype(mutex_)> lock(mutex_);
-		m_nCnt = 1;
-		m_CV.notify_one();
-	}
-
-	bool wait(uint32_t nMilliseconds) {
-		bool br = true;
-		std::unique_lock<decltype(mutex_)> lock(mutex_);
-		if (!m_nCnt) {
-			auto duration = std::chrono::milliseconds(nMilliseconds);
-			if (std::cv_status::timeout == m_CV.wait_for(lock, duration)) {
-				br = false;
-			}
-		}
-		m_nCnt = 0;
-		return br;
-	}
-private:
-	std::mutex mutex_;
-	std::condition_variable m_CV;
-	unsigned long m_nCnt { 0 };
-};
-
-class MultipleCameras::MultipleCamerasImpl : public flir::DeviceEvent {
+class MultipleCameras::MultipleCamerasImpl {
 public:
 	MultipleCamerasImpl(Trigger *pTrigger)
 			: m_Trigger(*pTrigger) {
@@ -53,55 +27,65 @@ public:
 				if (pCam->IsStreaming()) {
 					pCam->EndAcquisition();
 				}
-				//pCam->UnregisterEvent(*this);
 				pCam->DeInit();
 			}
 		}
 	}
 
-	void Initialize() {
+	void Initialize(uint32_t nExpoMicroSec, float fGain) {
+		m_nExpoMicroSec = nExpoMicroSec;
 		auto pCamList = FlirInstance::GetCameraList();
 		CHECK_GT(pCamList->GetSize(), 0);
 		for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
 			auto pCam = pCamList->GetByIndex(i);
 			CHECK(!pCam->IsInitialized()) << "Double initialized!";
 			pCam->Init();
-			//SetNodeParam(pCam->GetNodeMap(), "PixelFormat", "YCbCr8_CbYCr");
-			//SetNodeParam(pCam->GetNodeMap(), "VideoMode", "Mode0");
-			SetNodeParam(pCam->GetNodeMap(), "BalanceWhiteAuto", "Continuous");
-			SetNodeParam(pCam->GetNodeMap(), "TriggerMode", "Off");
+			auto &nodeMap = pCam->GetNodeMap();
+			SetNodeParam(nodeMap, "TriggerMode", "Off");
 
-			SetNodeParam(pCam->GetNodeMap(), "AcquisitionFrameRateEnable", true);
+			if (false) {
+				SetNodeParam(nodeMap, "AcquisitionFrameRateEnable", true);
+				SetNodeParam(nodeMap, "AcquisitionFrameRate", 30.f);
+			} else {
+				SetNodeParam(nodeMap, "PixelFormat", "YCbCr8_CbYCr");
+				SetNodeParam(nodeMap, "VideoMode", "Mode0");
+				SetNodeParam(nodeMap, "AcquisitionFrameRateEnabled", true);
+				SetNodeParam(nodeMap, "AcquisitionFrameRateAuto", "Off");
+				SetNodeParam(nodeMap, "AcquisitionFrameRate", 20.f);
+				SetNodeParam(nodeMap, "pgrExposureCompensationAuto", "Off");
+				SetNodeParam(nodeMap, "pgrExposureCompensation", 0.f);
+			}
+			SetNodeParam(nodeMap, "BalanceWhiteAuto", "Off");
+			SetNodeParam(nodeMap, "BalanceRatioSelector", "Red");
+			SetNodeParam(nodeMap, "BalanceRatio", 1.5f);
+			SetNodeParam(nodeMap, "BalanceRatioSelector", "Blue");
+			SetNodeParam(nodeMap, "BalanceRatio", 1.5f);
+			SetNodeParam(nodeMap, "BalanceWhiteAuto", "Continuous");
 
-			//SetNodeParam(pCam->GetNodeMap(), "AcquisitionFrameRateAuto", "Off");
-			//SetNodeParam(pCam->GetNodeMap(), "AcquisitionFrameRateEnabled", true);
+			SetNodeParam(nodeMap, "SaturationEnabled", true);
+			SetNodeParam(nodeMap, "Saturation", 100.f);
 
-			SetNodeParam(pCam->GetNodeMap(), "AcquisitionFrameRate", 30.f);
-			//SetNodeParam(pCam->GetNodeMap(), "Width", 2080);
-			//SetNodeParam(pCam->GetNodeMap(), "Height", 1552);
+			SetNodeParam(nodeMap, "ExposureAuto", "Off");
+			SetNodeParam(nodeMap, "ExposureTime", (float)m_nExpoMicroSec);
+			SetNodeParam(nodeMap, "ExposureTimeAbs", (float)m_nExpoMicroSec);
+			if (fGain >= 0.f) {
+				SetNodeParam(nodeMap, "GainAuto", "Off");
+				SetNodeParam(nodeMap, "Gain", 20.f); // [0.0, 24.0] gain 12.2 equal to gamma 3.0 but more smooth
+			} else {
+				SetNodeParam(nodeMap, "GainAuto", "Continuous");
+				SetNodeParam(nodeMap, "AutoGainLowerLimit", 0.f);
+				SetNodeParam(nodeMap, "AutoGainUpperLimit", 24.f);
+			}
+			SetNodeParam(nodeMap, "GammaEnabled", true);
+			SetNodeParam(nodeMap, "Gamma", 1.0f); // [1.0, 3.0] gamma 3.0 equal to gain 12.2 but more smooth
+
+			for (auto conf : m_Trigger.GetCamConfigs()) {
+				SetNodeParam(nodeMap, conf.first, conf.second.c_str());
+			}
+
 			SetNodeParam(pCam->GetTLStreamNodeMap(), "StreamBufferCountMode", "Manual");
 			SetNodeParam(pCam->GetTLStreamNodeMap(), "StreamBufferCountManual", 1);
-			for (auto conf : m_Trigger.GetCamConfigs()) {
-				SetNodeParam(pCam->GetNodeMap(), conf.first, conf.second.c_str());
-			}
 
-			//SetParam("BalanceRatioSelector", "Blue");
-			//flir::GenApi::CIntegerPtr width = pCam->GetNodeMap().GetNode("Width");
-			//flir::GenApi::CIntegerPtr height = pCam->GetNodeMap().GetNode("Height");
-			//SetParam("BalanceRatioSelector", "Red");
-			//balanceRatio->SetValue(2);
-
-			auto pEventSelctor = GetNode<flir::GenApi::CEnumerationPtr>(
-					pCam->GetNodeMap(), "EventSelector");
-			flir::GenApi::NodeList_t entries;
-			pEventSelctor->GetEntries(entries);
-			for (unsigned int i = 0; i < entries.size(); i++) {
-				flir::GenApi::CEnumEntryPtr ptrEnumEntry = entries.at(i);
-				pEventSelctor->SetIntValue(ptrEnumEntry->GetValue());
-				SetNodeParam(pCam->GetNodeMap(), "EventNotification", "On");
-				LOG(INFO) << ptrEnumEntry->GetDisplayName();
-			}
-			//pCam->RegisterEvent(*this);
 			pCam->BeginAcquisition();
 		}
 	}
@@ -121,13 +105,6 @@ public:
 	}
 
 private:
-	void OnDeviceEvent(flir::GenICam::gcstring eventName) override {
-		LOG(INFO) << "event=" << GetDeviceEventName() << ", ID="
-			<< GetDeviceEventId();
-		if (GetDeviceEventId() == 40003) {
-			m_TriggerSignal.notify();
-		}
-	}
 
 	void __DoNextAsync() {
 		m_WorkerThread = std::thread(&MultipleCamerasImpl::__WorkerProc, this);
@@ -140,29 +117,29 @@ private:
 	}
 
 	void __WorkerProc() {
-		usleep(70 * 1000);
-		m_Trigger();
-		LOG(INFO) << "Triggered";
-		auto nTimeOutMS = 3000;
+		auto nCaptureTimeOutMilliSec = 500;
 		auto pCamList = FlirInstance::GetCameraList();
 		auto nCamCnt = pCamList->GetSize();
 		m_ImgBuf.clear();
-
 		std::vector<flir::ImagePtr> rawImgPtrs;
 		rawImgPtrs.resize(nCamCnt);
+
+		auto nRealExpoMicroSec = (int32_t)(m_ExpTimer.Now() * 1000. * 1000.);
+		usleep(std::max(0, (int32_t)m_nExpoMicroSec - nRealExpoMicroSec));
+		m_Trigger();
 		for (uint32_t i = 0; i < nCamCnt; ++i) {
 			auto pCam = pCamList->GetByIndex(i);
 			flir::ImagePtr pRawImg;
 			try {
-				rawImgPtrs[i] = pCam->GetNextImage(nTimeOutMS);
-				LOG(INFO) << "Captured";
+				rawImgPtrs[i] = pCam->GetNextImage(nCaptureTimeOutMilliSec);
 			} catch (...) {
 				rawImgPtrs.clear();
 			}
 		}
+		m_ExpTimer.Reset();
 		if (rawImgPtrs.size() == nCamCnt) {
 			m_ImgBuf.resize(nCamCnt);
-//pragma omp parallel for
+			//pragma omp parallel for
 			for (uint32_t i = 0; i < nCamCnt; ++i) {
 				if (rawImgPtrs[i].IsValid()) {
 					if (!rawImgPtrs[i]->IsIncomplete()) {
@@ -184,7 +161,9 @@ private:
 	Trigger &m_Trigger;
 	std::vector<cv::Mat> m_ImgBuf;
 	std::thread m_WorkerThread;
-	Semaphore m_TriggerSignal;
+
+	uint32_t m_nExpoMicroSec { 10000 };
+	CTimer m_ExpTimer;
 };
 
 MultipleCameras::MultipleCameras(Trigger *pTrigger) {
@@ -195,8 +174,8 @@ MultipleCameras::~MultipleCameras() {
 	delete m_pImpl;
 }
 
-void MultipleCameras::Initialize() {
-	m_pImpl->Initialize();
+void MultipleCameras::Initialize(uint32_t nExpoMicroSec, float fGain) {
+	m_pImpl->Initialize(nExpoMicroSec, fGain);
 }
 
 void MultipleCameras::GetImages(std::vector<cv::Mat> &images) {

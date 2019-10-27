@@ -50,19 +50,24 @@ public:
 	}
 
 	void operator()() override {
-		auto pCamList = FlirInstance::GetCameraList();
-//#pragma omp parallel for
-		for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
-			auto pCam = pCamList->GetByIndex(i);
-			CHECK(pCam->IsInitialized());
-			auto &nodeMap = pCam->GetNodeMap();
-			flir::GenApi::CCommandPtr pTriggerCmd =
-					nodeMap.GetNode("TriggerSoftware");
-			CHECK(flir::GenApi::IsAvailable(pTriggerCmd)
-				&& flir::GenApi::IsWritable(pTriggerCmd));
-			pTriggerCmd->Execute();
+		if (m_Commanders.empty()) {
+			auto pCamList = FlirInstance::GetCameraList();
+			for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
+				auto pCam = pCamList->GetByIndex(i);
+				CHECK(pCam->IsInitialized());
+				auto &nodeMap = pCam->GetNodeMap();
+				flir::GenApi::CCommandPtr pTriggerCmd =
+						nodeMap.GetNode("TriggerSoftware");
+				CHECK(flir::GenApi::IsAvailable(pTriggerCmd)
+					&& flir::GenApi::IsWritable(pTriggerCmd));
+				m_Commanders.push_back(pTriggerCmd);
+			}
+		}
+		for (auto ptr : m_Commanders) {
+			ptr->Execute();
 		}
 	}
+	std::vector<flir::GenApi::CCommandPtr> m_Commanders;
 };
 
 class HardwareTrigger : public Trigger::TriggerImpl {

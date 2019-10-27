@@ -13,7 +13,7 @@ public:
 
 	~MultipleCameras();
 
-	void Initialize();
+	void Initialize(uint32_t nExpoMicroSec, float fGain = -1.f);
 
 	void GetImages(std::vector<cv::Mat> &images);
 
