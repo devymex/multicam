@@ -24,12 +24,17 @@ public:
 	using type = flir::GenApi::CBooleanPtr;
 };
 
+template<>
+class FlirPtr<std::string> {
+public:
+	using type = flir::GenApi::CStringPtr;
+};
+
 template<typename _Ty>
 _Ty GetNode(flir::GenApi::INodeMap &nodeMap, const std::string &strKey) {
 	_Ty pNode = nodeMap.GetNode(strKey.c_str());
 	CHECK(flir::GenApi::IsAvailable(pNode)) << strKey;
 	CHECK(flir::GenApi::IsReadable(pNode)) << strKey;
-	CHECK(flir::GenApi::IsWritable(pNode)) << strKey;
 	return pNode;
 }
 
@@ -52,9 +57,16 @@ void SetParam<const char*>(flir::GenApi::INodeMap &nodeMap,
 
 template<typename _Ty>
 void GetParam(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
-		_Ty &nValue) {
+		_Ty &value) {
 	auto pNode = GetNode<typename FlirPtr<_Ty>::type>(nodeMap, strKey);
-	nValue = pNode->GetValue();
+	value = pNode->GetValue();
+}
+
+template<>
+void GetParam(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
+		std::string &value) {
+	auto pNode = GetNode<typename FlirPtr<std::string>::type>(nodeMap, strKey);
+	value = pNode->GetValue().c_str();
 }
 
 template<typename _Ty>
@@ -65,103 +77,150 @@ void GetParamMinMax(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
 	maxVal = pNode->GetMax();
 }
 
-CameraConfig::CameraConfig(flir::GenApi::INodeMap &nodeMap)
-		: m_NodeMap(nodeMap) {
+CameraConfig::CameraConfig(flir::CameraPtr pCam)
+		: m_pCam(pCam) {
+}
+
+std::string CameraConfig::GetModelType() {
+	std::string strModelType;
+	GetParam(__NodeMap(TLDEV), "DeviceModelName", strModelType);
+	return strModelType;
+}
+
+std::string CameraConfig::GetDeviceSN() {
+	std::string strDeviceSN;
+	GetParam(__NodeMap(TLDEV), "DeviceSerialNumber", strDeviceSN);
+	return strDeviceSN;
 }
 
 void CameraConfig::SetPixelFormat(const std::string &strPixelFormat) {
-	SetParam(m_NodeMap, "PixelFormat", strPixelFormat.c_str());
+	SetParam(__NodeMap(NORMAL), "PixelFormat", strPixelFormat.c_str());
 }
 
 void CameraConfig::SetTriggerDevice(const std::string &strTriggerDevice) {
-	SetParam(m_NodeMap, "AcquisitionMode", "Continuous");
+	auto &nodeMap = __NodeMap(NORMAL);
+	SetParam(nodeMap, "AcquisitionMode", "Continuous");
 	if (strTriggerDevice == "Off") {
-		SetParam(m_NodeMap, "TriggerMode", "Off");
+		SetParam(nodeMap, "TriggerMode", "Off");
 	} else if (strTriggerDevice == "Software") {
-		SetParam(m_NodeMap, "TriggerMode", "On");
-		SetParam(m_NodeMap, "TriggerSource", "Software");
+		SetParam(nodeMap, "TriggerMode", "On");
+		SetParam(nodeMap, "TriggerSource", "Software");
 	} else if (strTriggerDevice == "Line0") {
-		SetParam(m_NodeMap, "TriggerMode", "On");
-		SetParam(m_NodeMap, "TriggerSource", "Line0");
+		SetParam(nodeMap, "TriggerMode", "On");
+		SetParam(nodeMap, "TriggerSource", "Line0");
 	}
-	//SetParam(m_NodeMap, "TriggerActivation", "RisingEdge");
+	//SetParam(nodeMap, "TriggerActivation", "RisingEdge");
 }
 
 // Set to maximum framerate if less than 0
 void CameraConfig::SetFrameRate(float fFrameRate) {
-	SetParam(m_NodeMap, "TriggerMode", "Off");
+	auto &nodeMap = __NodeMap(NORMAL);
+	SetParam(nodeMap, "TriggerMode", "Off");
 	std::string strKey = "AcquisitionFrameRateEnabled";
-	if (!flir::GenApi::IsAvailable(m_NodeMap.GetNode(strKey.c_str()))) {
+	if (!flir::GenApi::IsAvailable(nodeMap.GetNode(strKey.c_str()))) {
 		strKey = "AcquisitionFrameRateEnable";
-		CHECK(flir::GenApi::IsAvailable(m_NodeMap.GetNode(strKey.c_str())));
+		CHECK(flir::GenApi::IsAvailable(nodeMap.GetNode(strKey.c_str())));
 	}
 	if (fFrameRate < 0.f) {
-		SetParam(m_NodeMap, strKey, false);
-		SetParam(m_NodeMap, "AcquisitionFrameRateAuto", "Continuous");
+		SetParam(nodeMap, strKey, false);
+		SetParam(nodeMap, "AcquisitionFrameRateAuto", "Continuous");
 	} else {
-		SetParam(m_NodeMap, strKey, true);
+		SetParam(nodeMap, strKey, true);
 		if (strKey == "AcquisitionFrameRateEnabled") {
-			SetParam(m_NodeMap, "AcquisitionFrameRateAuto", "Off");
+			SetParam(nodeMap, "AcquisitionFrameRateAuto", "Off");
 		}
 		if (fFrameRate < 1.f) {
 			float fMin;
-			GetParamMinMax(m_NodeMap, "AcquisitionFrameRate", fMin, fFrameRate);
+			GetParamMinMax(nodeMap, "AcquisitionFrameRate", fMin, fFrameRate);
 			fFrameRate -= 0.01;
 		}
-		SetParam(m_NodeMap, "AcquisitionFrameRate", fFrameRate);
+		SetParam(nodeMap, "AcquisitionFrameRate", fFrameRate);
 	}
 }
 
 void CameraConfig::SetWhiteBalance(float fBlueRatio, float fRedRatio) {
+	auto &nodeMap = __NodeMap(NORMAL);
 	if (fBlueRatio < 1.f || fRedRatio < 1.f) {
-		SetParam(m_NodeMap, "BalanceWhiteAuto", "Continuous");
+		SetParam(nodeMap, "BalanceWhiteAuto", "Continuous");
 	} else {
-		SetParam(m_NodeMap, "BalanceWhiteAuto", "Off");
-		SetParam(m_NodeMap, "BalanceRatio", fBlueRatio);
-		SetParam(m_NodeMap, "BalanceRatioSelector", "Blue");
-		SetParam(m_NodeMap, "BalanceRatio", fRedRatio);
+		SetParam(nodeMap, "BalanceWhiteAuto", "Off");
+		SetParam(nodeMap, "BalanceRatio", fBlueRatio);
+		SetParam(nodeMap, "BalanceRatioSelector", "Blue");
+		SetParam(nodeMap, "BalanceRatio", fRedRatio);
 	}
 }
 
 void CameraConfig::SetSaturation(float fSaturation) {
+	auto &nodeMap = __NodeMap(NORMAL);
 	if (fSaturation < 0.f) {
-		SetParam(m_NodeMap, "SaturationAuto", "Continuous");
+		SetParam(nodeMap, "SaturationAuto", "Continuous");
 	} else {
-		SetParam(m_NodeMap, "SaturationAuto", "Off");
-		SetParam(m_NodeMap, "Saturation", fSaturation);
+		SetParam(nodeMap, "SaturationAuto", "Off");
+		SetParam(nodeMap, "Saturation", fSaturation);
 	}
 }
 
 void CameraConfig::SetExposure(float fMicroseconds) {
+	auto &nodeMap = __NodeMap(NORMAL);
 	if (fMicroseconds < 0.f) {
-		SetParam(m_NodeMap, "ExposureAuto", "Continuous");
+		SetParam(nodeMap, "ExposureAuto", "Continuous");
 	} else {
-		SetParam(m_NodeMap, "ExposureAuto", "Off");
-		SetParam(m_NodeMap, "ExposureTime", fMicroseconds);
-		//SetParam(m_NodeMap, "ExposureTimeAbs", fMicroseconds);
+		SetParam(nodeMap, "ExposureAuto", "Off");
+		SetParam(nodeMap, "ExposureTime", fMicroseconds);
+		//SetParam(nodeMap, "ExposureTimeAbs", fMicroseconds);
 	}
 }
 
 void CameraConfig::SetGain(float fGain) {
+	auto &nodeMap = __NodeMap(NORMAL);
 	if (fGain < 0.f) {
 		float fMin, fMax;
-		SetParam(m_NodeMap, "GainAuto", "Off");
-		GetParamMinMax(m_NodeMap, "Gain", fMin, fMax);
+		SetParam(nodeMap, "GainAuto", "Off");
+		GetParamMinMax(nodeMap, "Gain", fMin, fMax);
 
-		SetParam(m_NodeMap, "GainAuto", "Continuous");
-		SetParam(m_NodeMap, "AutoGainLowerLimit", fMin);
-		SetParam(m_NodeMap, "AutoGainUpperLimit", fMax);
+		SetParam(nodeMap, "GainAuto", "Continuous");
+		SetParam(nodeMap, "AutoGainLowerLimit", fMin);
+		SetParam(nodeMap, "AutoGainUpperLimit", fMax);
 	} else {
-		SetParam(m_NodeMap, "GainAuto", "Off");
-		SetParam(m_NodeMap, "Gain", fGain);
+		SetParam(nodeMap, "GainAuto", "Off");
+		SetParam(nodeMap, "Gain", fGain);
 	}
 }
 
 void CameraConfig::SetGamma(float fGamma) {
+	auto &nodeMap = __NodeMap(NORMAL);
 	if (fGamma < 0.f) {
-		SetParam(m_NodeMap, "GammaEnabled", false);
+		SetParam(nodeMap, "GammaEnabled", false);
 	} else {
-		SetParam(m_NodeMap, "GammaEnabled", true);
-		SetParam(m_NodeMap, "Gamma", fGamma);
+		SetParam(nodeMap, "GammaEnabled", true);
+		SetParam(nodeMap, "Gamma", fGamma);
+	}
+}
+
+void CameraConfig::SetResolution(int32_t nWidth, int32_t nHeight) {
+	auto &nodeMap = __NodeMap(NORMAL);
+	if (nWidth == 0 || nHeight == 0) {
+		int32_t nMaxWidth, nMaxHeight, nTmp;
+		GetParamMinMax(nodeMap, "Width", nTmp, nMaxWidth);
+		GetParamMinMax(nodeMap, "Height", nTmp, nMaxHeight);
+		SetParam(nodeMap, "Width", nMaxWidth);
+		SetParam(nodeMap, "Height", nMaxHeight);
+	} else {
+		SetParam(nodeMap, "Width", nWidth);
+		SetParam(nodeMap, "Height", nHeight);
+	}
+}
+
+void CameraConfig::SetBufferSize(int32_t nSize) {
+	auto &nodeMap = __NodeMap(STREAM);
+	SetParam(nodeMap, "StreamBufferCountMode", "Manual");
+	SetParam(nodeMap, "StreamBufferCountManual", nSize);
+}
+
+flir::GenApi::INodeMap& CameraConfig::__NodeMap(NodeMapType nmt) {
+	switch (nmt) {
+	case NORMAL: return m_pCam->GetNodeMap();
+	case TLDEV: return m_pCam->GetTLDeviceNodeMap();
+	case STREAM: return m_pCam->GetTLStreamNodeMap();
 	}
 }

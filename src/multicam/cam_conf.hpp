@@ -6,7 +6,11 @@
 
 class CameraConfig {
 public:
-	CameraConfig(flir::GenApi::INodeMap &nodeMap);
+	CameraConfig(flir::CameraPtr pCam);
+
+	std::string GetModelType();
+
+	std::string GetDeviceSN();
 
 	void SetPixelFormat(const std::string &strPixelFormat);
 
@@ -32,8 +36,16 @@ public:
 	// [0.5, 3.0] Turn off gamma if less than 0
 	void SetGamma(float fGamma);
 
+	// Resolution
+	void SetResolution(int32_t nWidth, int32_t nHeight);
+
+	void SetBufferSize(int32_t nSize);
+
 private:
-	flir::GenApi::INodeMap &m_NodeMap;
+	enum NodeMapType {NORMAL, TLDEV, STREAM};
+	flir::GenApi::INodeMap& __NodeMap(NodeMapType nmt);
+
+	flir::CameraPtr m_pCam;
 };
 
 #endif //__CAM_CONF_HPP

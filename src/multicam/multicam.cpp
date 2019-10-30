@@ -134,21 +134,25 @@ private:
 	void __InitializeCamera(flir::CameraPtr pCam, uint32_t nExpoMicroSec,
 			const std::string &strConfRoot) {
 		CHECK(!pCam->IsInitialized()) << "Double initialized!";
+		pCam->Init();
+		CameraConfig camConf(pCam);
 
-		flir::GenApi::CStringPtr ptrDeviceModelName =
-				pCam->GetTLDeviceNodeMap().GetNode("DeviceModelName");
-		std::string strDeviceModel = ptrDeviceModelName->ToString().c_str();
+		auto strDeviceModel = camConf.GetModelType();
+		auto strDeviceSN = camConf.GetDeviceSN();
+		LOG(INFO) << "Found camera: " << strDeviceModel
+				  << '(' << strDeviceSN << ')';
+
 		std::replace(strDeviceModel.begin(), strDeviceModel.end(), ' ', '_');
-		LOG(INFO) << "Camera: " << strDeviceModel;
-		std::string strConfFileName = strConfRoot + "/"
-				+ strDeviceModel + ".json";
+		std::ostringstream ossConfFileName;
+		ossConfFileName << strConfRoot << "/" << strDeviceModel << ".json";
 		nlohmann::json jConf;
-		std::ifstream confFile(strConfFileName);
+		std::ifstream confFile(ossConfFileName.str());
 		if(confFile.is_open()) {
 			confFile >> jConf;
+			LOG(INFO) << "Load configuration from \""
+					  << ossConfFileName.str() << "\"";
 		}
-		pCam->Init();
-		CameraConfig camConf(pCam->GetNodeMap());
+
 		for (auto jItem = jConf.begin(); jItem != jConf.end(); ++jItem) {
 			if (jItem.key() == "Gamma") {
 				camConf.SetGamma(jItem.value().get<float>());
@@ -157,10 +161,21 @@ private:
 			} else if (jItem.key() == "PixelFormat") {
 				camConf.SetPixelFormat(jItem.value().get<std::string>());
 			} else if (jItem.key() == "WhiteBalance") {
-				auto fWhiteBalance = jItem.value().get<float>();
-				camConf.SetWhiteBalance(fWhiteBalance, fWhiteBalance);
+				std::vector<int32_t> values;
+				for (auto v : jItem.value()) {
+					values.push_back(v.get<int32_t>());
+				}
+				CHECK_EQ(values.size(), 2);
+				camConf.SetWhiteBalance(values[0], values[1]);
 			} else if (jItem.key() == "Gain") {
 				camConf.SetGain(jItem.value().get<float>());
+			} else if (jItem.key() == "Resolution") {
+				std::vector<int32_t> values;
+				for (auto v : jItem.value()) {
+					values.push_back(v.get<int32_t>());
+				}
+				CHECK_EQ(values.size(), 2);
+				camConf.SetResolution(values[0], values[1]);
 			}
 		}
 		camConf.SetExposure(nExpoMicroSec);
@@ -174,6 +189,7 @@ private:
 				camConf.SetTriggerDevice("Line0");
 			}
 		}
+		camConf.SetBufferSize(1);
 		pCam->BeginAcquisition();
 	}
 

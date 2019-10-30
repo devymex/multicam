@@ -11,7 +11,8 @@ public:
 	cv::Mat operator()(flir::ImagePtr pRaw);
 
 private:
-	cv::Mat __UYV2Mat(flir::ImagePtr pImg);
+	cv::Mat __UYV2BGR(flir::ImagePtr pImg);
+
 	uint8_t* __RequestBuffer(uint32_t nBytes);
 
 private:

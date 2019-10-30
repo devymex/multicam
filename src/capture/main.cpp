@@ -12,7 +12,7 @@ int main(int nArgCnt, char *ppArgs[]) {
 		strTriggerDevice = ppArgs[1];
 	}
 	MultipleCameras multiCam(strTriggerDevice);
-	multiCam.Initialize(18000, "./config");
+	multiCam.Initialize(16000, "./config");
 	CTimer t;
 	std::vector<double> cycleTimer;
 	for (int iFrame = 1; ; ++iFrame) {
@@ -27,7 +27,7 @@ int main(int nArgCnt, char *ppArgs[]) {
 			}
 		}
 		cycleTimer.push_back(t.Reset());
-		if (cycleTimer.size() > 10) {
+		while (cycleTimer.size() > 10) {
 			cycleTimer.erase(cycleTimer.begin());
 		}
 		LOG(INFO) << "FPS: " << (double)cycleTimer.size() /
