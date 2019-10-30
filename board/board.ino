@@ -1,4 +1,4 @@
-int nTriggerPin = 8;
+int nTriggerPin = 2;
 
 void setup() {
 	pinMode(nTriggerPin, OUTPUT);
