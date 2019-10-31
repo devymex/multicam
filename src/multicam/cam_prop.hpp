@@ -4,9 +4,9 @@
 #include <string>
 #include "flir_inst.hpp"
 
-class CameraConfig {
+class CameraProperties {
 public:
-	CameraConfig(flir::CameraPtr pCam);
+	CameraProperties(flir::CameraPtr pCam);
 
 	std::string GetModelType();
 

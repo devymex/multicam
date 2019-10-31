@@ -1,4 +1,4 @@
-#include "cam_conf.hpp"
+#include "cam_prop.hpp"
 
 #include <glog/logging.h>
 
@@ -77,27 +77,27 @@ void GetParamMinMax(flir::GenApi::INodeMap &nodeMap, const std::string &strKey,
 	maxVal = pNode->GetMax();
 }
 
-CameraConfig::CameraConfig(flir::CameraPtr pCam)
+CameraProperties::CameraProperties(flir::CameraPtr pCam)
 		: m_pCam(pCam) {
 }
 
-std::string CameraConfig::GetModelType() {
+std::string CameraProperties::GetModelType() {
 	std::string strModelType;
 	GetParam(__NodeMap(TLDEV), "DeviceModelName", strModelType);
 	return strModelType;
 }
 
-std::string CameraConfig::GetDeviceSN() {
+std::string CameraProperties::GetDeviceSN() {
 	std::string strDeviceSN;
 	GetParam(__NodeMap(TLDEV), "DeviceSerialNumber", strDeviceSN);
 	return strDeviceSN;
 }
 
-void CameraConfig::SetPixelFormat(const std::string &strPixelFormat) {
+void CameraProperties::SetPixelFormat(const std::string &strPixelFormat) {
 	SetParam(__NodeMap(NORMAL), "PixelFormat", strPixelFormat.c_str());
 }
 
-void CameraConfig::SetTriggerDevice(const std::string &strTriggerDevice) {
+void CameraProperties::SetTriggerDevice(const std::string &strTriggerDevice) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	SetParam(nodeMap, "AcquisitionMode", "Continuous");
 	if (strTriggerDevice == "Off") {
@@ -113,7 +113,7 @@ void CameraConfig::SetTriggerDevice(const std::string &strTriggerDevice) {
 }
 
 // Set to maximum framerate if less than 0
-void CameraConfig::SetFrameRate(float fFrameRate) {
+void CameraProperties::SetFrameRate(float fFrameRate) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	SetParam(nodeMap, "TriggerMode", "Off");
 	std::string strKey = "AcquisitionFrameRateEnabled";
@@ -138,7 +138,7 @@ void CameraConfig::SetFrameRate(float fFrameRate) {
 	}
 }
 
-void CameraConfig::SetWhiteBalance(float fBlueRatio, float fRedRatio) {
+void CameraProperties::SetWhiteBalance(float fBlueRatio, float fRedRatio) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	if (fBlueRatio < 1.f || fRedRatio < 1.f) {
 		SetParam(nodeMap, "BalanceWhiteAuto", "Continuous");
@@ -150,7 +150,7 @@ void CameraConfig::SetWhiteBalance(float fBlueRatio, float fRedRatio) {
 	}
 }
 
-void CameraConfig::SetSaturation(float fSaturation) {
+void CameraProperties::SetSaturation(float fSaturation) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	if (fSaturation < 0.f) {
 		SetParam(nodeMap, "SaturationAuto", "Continuous");
@@ -160,7 +160,7 @@ void CameraConfig::SetSaturation(float fSaturation) {
 	}
 }
 
-void CameraConfig::SetExposure(float fMicroseconds) {
+void CameraProperties::SetExposure(float fMicroseconds) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	if (fMicroseconds < 0.f) {
 		SetParam(nodeMap, "ExposureAuto", "Continuous");
@@ -171,7 +171,7 @@ void CameraConfig::SetExposure(float fMicroseconds) {
 	}
 }
 
-void CameraConfig::SetGain(float fGain) {
+void CameraProperties::SetGain(float fGain) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	if (fGain < 0.f) {
 		float fMin, fMax;
@@ -187,7 +187,7 @@ void CameraConfig::SetGain(float fGain) {
 	}
 }
 
-void CameraConfig::SetGamma(float fGamma) {
+void CameraProperties::SetGamma(float fGamma) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	if (fGamma < 0.f) {
 		SetParam(nodeMap, "GammaEnabled", false);
@@ -197,7 +197,7 @@ void CameraConfig::SetGamma(float fGamma) {
 	}
 }
 
-void CameraConfig::SetResolution(int32_t nWidth, int32_t nHeight) {
+void CameraProperties::SetResolution(int32_t nWidth, int32_t nHeight) {
 	auto &nodeMap = __NodeMap(NORMAL);
 	if (nWidth == 0 || nHeight == 0) {
 		int32_t nMaxWidth, nMaxHeight, nTmp;
@@ -211,13 +211,13 @@ void CameraConfig::SetResolution(int32_t nWidth, int32_t nHeight) {
 	}
 }
 
-void CameraConfig::SetBufferSize(int32_t nSize) {
+void CameraProperties::SetBufferSize(int32_t nSize) {
 	auto &nodeMap = __NodeMap(STREAM);
 	SetParam(nodeMap, "StreamBufferCountMode", "Manual");
 	SetParam(nodeMap, "StreamBufferCountManual", nSize);
 }
 
-flir::GenApi::INodeMap& CameraConfig::__NodeMap(NodeMapType nmt) {
+flir::GenApi::INodeMap& CameraProperties::__NodeMap(NodeMapType nmt) {
 	switch (nmt) {
 	case NORMAL: return m_pCam->GetNodeMap();
 	case TLDEV: return m_pCam->GetTLDeviceNodeMap();

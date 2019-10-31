@@ -13,7 +13,7 @@
 #include "multicam/ctimer.hpp"
 #include "json.hpp"
 #include "trigger.hpp"
-#include "cam_conf.hpp"
+#include "cam_prop.hpp"
 #include "flir_inst.hpp"
 #include "post_proc.hpp"
 
@@ -66,6 +66,21 @@ public:
 		}
 		images.swap(m_ImgBuf);
 		__CaptureAsync();
+	}
+
+	uint32_t GetCameraCount() const {
+		return (uint32_t)FlirInstance::GetCameraList()->GetSize();
+	}
+
+	CAMERA_INFO GetCameraInfo(uint32_t iCam) const {
+		auto pCamList = FlirInstance::GetCameraList();
+		CHECK_LT(iCam, pCamList->GetSize());
+		CameraProperties camProp(pCamList->GetByIndex(iCam));
+
+		CAMERA_INFO camInfo;
+		camInfo.strModelType = camProp.GetModelType();
+		camInfo.strDeviceSN = camProp.GetDeviceSN();
+		return camInfo;
 	}
 
 private:
@@ -135,7 +150,7 @@ private:
 			const std::string &strConfRoot) {
 		CHECK(!pCam->IsInitialized()) << "Double initialized!";
 		pCam->Init();
-		CameraConfig camConf(pCam);
+		CameraProperties camConf(pCam);
 
 		auto strDeviceModel = camConf.GetModelType();
 		auto strDeviceSN = camConf.GetDeviceSN();
