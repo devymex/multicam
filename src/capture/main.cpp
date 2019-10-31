@@ -18,11 +18,11 @@ int main(int nArgCnt, char *ppArgs[]) {
 	for (int iFrame = 1; ; ++iFrame) {
 		std::vector<cv::Mat> images;
 		multiCam.GetImages(images);
-		for (int i = 0; i < (int)images.size(); ++i) {
-			auto &img = images[i];
+		for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
+			auto &img = images[iCam];
 			if (!img.empty()) {
-				//cv::resize(img, img, img.size() / 2);
-				std::string strName = "img" + std::to_string(i);
+				cv::resize(img, img, img.size() / 4);
+				std::string strName = "cam" + std::to_string(iCam);
 				cv::imshow(strName, img);
 			}
 		}
@@ -30,9 +30,19 @@ int main(int nArgCnt, char *ppArgs[]) {
 		while (cycleTimer.size() > 10) {
 			cycleTimer.erase(cycleTimer.begin());
 		}
-		LOG(INFO) << "FPS: " << (double)cycleTimer.size() /
-				std::accumulate(cycleTimer.begin(), cycleTimer.end(), 0.);
-		if (27 == cv::waitKey(1)) {
+		//LOG(INFO) << "FPS: " << (double)cycleTimer.size() /
+		//		std::accumulate(cycleTimer.begin(), cycleTimer.end(), 0.);
+		int nKey = cv::waitKey(1);
+		if ('s' == nKey) {
+			for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
+				auto &img = images[iCam];
+				if (!img.empty()) {
+					std::string strName = "frm" + std::to_string(iFrame)
+							+ "_cam" + std::to_string(iCam) + ".png";
+					cv::imwrite(strName, img);
+				}
+			}
+		} else if (27 == nKey) {
 			break;
 		}
 	}

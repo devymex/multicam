@@ -6,6 +6,8 @@
 
 class PostProcessor {
 public:
+	PostProcessor();
+
 	~PostProcessor();
 
 	cv::Mat operator()(flir::ImagePtr pRaw);
@@ -18,6 +20,7 @@ private:
 private:
 	void *m_pBuffer { nullptr };
 	uint32_t m_nBufSize { 0 };
+	cv::Size m_DstSize;
 };
 
 #endif //__POST_PROC_HPP

@@ -5,5 +5,5 @@
 	"WhiteBalance": [-1.0, -1.0],
 	"Gain": 20,
 	"FrameRate": 0,
-	"Resolution": [800, 600]
+	"Resolution": [0, 0]
 }

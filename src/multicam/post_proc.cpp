@@ -11,6 +11,10 @@
 #include <nppi_geometry_transforms.h>
 #endif
 
+PostProcessor::PostProcessor() : m_DstSize(0, 0) {
+
+}
+
 PostProcessor::~PostProcessor() {
 #ifdef WITH_CUDA
 	cudaFree(m_pBuffer);
@@ -36,7 +40,11 @@ cv::Mat PostProcessor::operator()(flir::ImagePtr pRaw) {
 cv::Mat PostProcessor::__UYV2BGR(flir::ImagePtr pImg) {
 #ifdef WITH_CUDA
 	NppiSize srcSize = {(int)pImg->GetWidth(), (int)pImg->GetHeight()};
-	NppiSize dstSize = {srcSize.width / 2, srcSize.height / 2};
+	NppiSize dstSize = {srcSize.width, srcSize.height};
+	if (m_DstSize.width != 0 && m_DstSize.height != 0) {
+		dstSize.width = m_DstSize.width;
+		dstSize.height = m_DstSize.height;
+	}
 	NppiRect srcROI = {0, 0, srcSize.width, srcSize.height};
 	NppiRect dstROI = {0, 0, dstSize.width, dstSize.height};
 	uint32_t nChannels = pImg->GetNumChannels();
@@ -56,12 +64,14 @@ cv::Mat PostProcessor::__UYV2BGR(flir::ImagePtr pImg) {
 	nppiSwapChannels_8u_C3IR(pSrcBuf, nSrcStride, srcSize, order);
 	nppiYUVToBGR_8u_C3R(pSrcBuf, nSrcStride, pDstBuf, nDstStride, srcSize);
 
-	std::swap(pDstBuf, pSrcBuf);
-	nDstStride = dstSize.width * nChannels;
-	nDstBytes = nDstStride * dstSize.height;
+	if (dstSize.width != srcSize.width || dstSize.height != srcSize.height) {
+		std::swap(pDstBuf, pSrcBuf);
+		nDstStride = dstSize.width * nChannels;
+		nDstBytes = nDstStride * dstSize.height;
 
-	nppiResize_8u_C3R(pSrcBuf, nSrcStride, srcSize, srcROI,
-			pDstBuf, nDstStride, dstSize, dstROI, NPPI_INTER_LINEAR);
+		nppiResize_8u_C3R(pSrcBuf, nSrcStride, srcSize, srcROI,
+				pDstBuf, nDstStride, dstSize, dstROI, NPPI_INTER_LINEAR);
+	}
 
 	cv::Mat img(dstSize.height, dstSize.width, CV_8UC3);
 	cudaMemcpy(img.data, pDstBuf, nDstBytes, cudaMemcpyDeviceToHost);
@@ -71,7 +81,8 @@ cv::Mat PostProcessor::__UYV2BGR(flir::ImagePtr pImg) {
 	auto pBgrImg = pImg->Convert(flir::PixelFormat_BGR8, flir::HQ_LINEAR);
 	cv::Mat img(pBgrImg->GetHeight(), pBgrImg->GetWidth(),
 			CV_8UC3, pBgrImg->GetData());
-	return img.clone();
+	cv::resize(img, img, img.size() / 2);
+	return img;
 #endif
 }
 
