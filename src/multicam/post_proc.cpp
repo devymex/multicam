@@ -12,7 +12,6 @@
 #endif
 
 PostProcessor::PostProcessor() : m_DstSize(0, 0) {
-
 }
 
 PostProcessor::~PostProcessor() {
@@ -81,8 +80,9 @@ cv::Mat PostProcessor::__UYV2BGR(flir::ImagePtr pImg) {
 	auto pBgrImg = pImg->Convert(flir::PixelFormat_BGR8, flir::HQ_LINEAR);
 	cv::Mat img(pBgrImg->GetHeight(), pBgrImg->GetWidth(),
 			CV_8UC3, pBgrImg->GetData());
-	cv::resize(img, img, img.size() / 2);
-	return img;
+	if (m_DstSize.width != 0 && m_DstSize.height != 0) {
+		cv::resize(img, m_Result, m_DstSize);
+	}
 #endif
 }
 

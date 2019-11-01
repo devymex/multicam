@@ -21,7 +21,7 @@ int main(int nArgCnt, char *ppArgs[]) {
 		for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
 			auto &img = images[iCam];
 			if (!img.empty()) {
-				cv::resize(img, img, img.size() / 4);
+				//cv::resize(img, img, img.size() / 4);
 				std::string strName = "cam" + std::to_string(iCam);
 				cv::imshow(strName, img);
 			}
@@ -30,8 +30,8 @@ int main(int nArgCnt, char *ppArgs[]) {
 		while (cycleTimer.size() > 10) {
 			cycleTimer.erase(cycleTimer.begin());
 		}
-		//LOG(INFO) << "FPS: " << (double)cycleTimer.size() /
-		//		std::accumulate(cycleTimer.begin(), cycleTimer.end(), 0.);
+		LOG(INFO) << "FPS: " << (double)cycleTimer.size() /
+				std::accumulate(cycleTimer.begin(), cycleTimer.end(), 0.);
 		int nKey = cv::waitKey(1);
 		if ('s' == nKey) {
 			for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
