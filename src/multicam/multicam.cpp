@@ -242,3 +242,12 @@ void MultipleCameras::Initialize(uint32_t nExpoMicroSec,
 void MultipleCameras::GetImages(std::vector<cv::Mat> &images) {
 	m_pImpl->GetImages(images);
 }
+
+uint32_t MultipleCameras::GetCameraCount() const {
+	return m_pImpl->GetCameraCount();
+}
+
+CAMERA_INFO MultipleCameras::GetCameraInfo(uint32_t iCam) const {
+	return m_pImpl->GetCameraInfo(iCam);	
+}
+
