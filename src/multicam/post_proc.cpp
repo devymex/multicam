@@ -28,6 +28,8 @@ cv::Mat PostProcessor::operator()(flir::ImagePtr pRaw) {
 				pRaw->GetData(), pRaw->GetStride());
 		cv::resize(img, img, img.size() / 4);
 		return img.clone();
+	} else if (pRaw->GetPixelFormat() == flir::PixelFormat_BayerRG8) {
+		return __DeBayer(pRaw);
 	} else {
 		LOG(INFO) << pRaw->GetPixelFormatName();
 		LOG(INFO) << pRaw->GetWidth() << "x" << pRaw->GetHeight()
@@ -81,9 +83,19 @@ cv::Mat PostProcessor::__UYV2BGR(flir::ImagePtr pImg) {
 	cv::Mat img(pBgrImg->GetHeight(), pBgrImg->GetWidth(),
 			CV_8UC3, pBgrImg->GetData());
 	if (m_DstSize.width != 0 && m_DstSize.height != 0) {
-		cv::resize(img, m_Result, m_DstSize);
+		cv::resize(img, img, m_DstSize);
 	}
 #endif
+}
+
+cv::Mat PostProcessor::__DeBayer(flir::ImagePtr pImg) {
+	auto pBgrImg = pImg->Convert(flir::PixelFormat_BGR8, flir::HQ_LINEAR);
+	cv::Mat img(pBgrImg->GetHeight(), pBgrImg->GetWidth(),
+			CV_8UC3, pBgrImg->GetData());
+	if (m_DstSize.width != 0 && m_DstSize.height != 0) {
+		cv::resize(img, img, m_DstSize);
+	}
+	return img;
 }
 
 uint8_t* PostProcessor::__RequestBuffer(uint32_t nBytes) {

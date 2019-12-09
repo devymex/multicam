@@ -14,7 +14,7 @@ public:
 
 private:
 	cv::Mat __UYV2BGR(flir::ImagePtr pImg);
-
+	cv::Mat __DeBayer(flir::ImagePtr pImg);
 	uint8_t* __RequestBuffer(uint32_t nBytes);
 
 private:
