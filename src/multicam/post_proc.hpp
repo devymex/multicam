@@ -7,20 +7,16 @@
 class PostProcessor {
 public:
 	PostProcessor();
-
 	~PostProcessor();
 
-	cv::Mat operator()(flir::ImagePtr pRaw);
+	void Process(flir::ImagePtr pRaw, cv::cuda::GpuMat &dstImg);
 
 private:
-	cv::Mat __UYV2BGR(flir::ImagePtr pImg);
-	cv::Mat __DeBayer(flir::ImagePtr pImg);
 	uint8_t* __RequestBuffer(uint32_t nBytes);
 
 private:
-	void *m_pBuffer { nullptr };
-	uint32_t m_nBufSize { 0 };
-	cv::Size m_DstSize;
+	uint32_t m_nBufSize;
+	uint8_t *m_pBuffer;
 };
 
 #endif //__POST_PROC_HPP

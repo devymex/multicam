@@ -18,7 +18,7 @@ public:
 
 	void Initialize(uint32_t nExpoMicroSec, const std::string &strConfRoot);
 
-	void GetImages(std::vector<cv::Mat> &images);
+	void GetImages(std::vector<cv::cuda::GpuMat> &images);
 
 	uint32_t GetCameraCount() const;
 

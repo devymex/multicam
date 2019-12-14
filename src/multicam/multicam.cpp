@@ -54,7 +54,7 @@ public:
 		(*m_pTrigger)(500 * 1000);
 	}
 
-	void GetImages(std::vector<cv::Mat> &images) {
+	void GetImages(std::vector<cv::cuda::GpuMat> &images) {
 		auto pCamList = FlirInstance::GetCameraList();
 		for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
 			CHECK(pCamList->GetByIndex(i)->IsInitialized())
@@ -98,7 +98,6 @@ private:
 		auto nCaptureTimeOutMilliSec = 500;
 		auto pCamList = FlirInstance::GetCameraList();
 		auto nCamCnt = pCamList->GetSize();
-		m_ImgBuf.clear();
 		std::vector<flir::ImagePtr> rawImgPtrs;
 		rawImgPtrs.resize(nCamCnt);
 
@@ -119,7 +118,7 @@ private:
 			for (uint32_t i = 0; i < nCamCnt; ++i) {
 				if (rawImgPtrs[i].IsValid()) {
 					if (!rawImgPtrs[i]->IsIncomplete()) {
-						m_ImgBuf[i] = m_PostProcessor(rawImgPtrs[i]);
+						m_PostProcessor.Process(rawImgPtrs[i], m_ImgBuf[i]);
 					}
 					rawImgPtrs[i]->Release();
 				}
@@ -220,7 +219,7 @@ private:
 
 private:
 	std::unique_ptr<Trigger> m_pTrigger;
-	std::vector<cv::Mat> m_ImgBuf;
+	std::vector<cv::cuda::GpuMat> m_ImgBuf;
 	std::thread m_WorkerThread;
 	std::thread m_TriggerThread;
 	PostProcessor m_PostProcessor;
@@ -239,7 +238,7 @@ void MultipleCameras::Initialize(uint32_t nExpoMicroSec,
 	m_pImpl->Initialize(nExpoMicroSec, strConfRoot);
 }
 
-void MultipleCameras::GetImages(std::vector<cv::Mat> &images) {
+void MultipleCameras::GetImages(std::vector<cv::cuda::GpuMat> &images) {
 	m_pImpl->GetImages(images);
 }
 
@@ -248,6 +247,6 @@ uint32_t MultipleCameras::GetCameraCount() const {
 }
 
 CAMERA_INFO MultipleCameras::GetCameraInfo(uint32_t iCam) const {
-	return m_pImpl->GetCameraInfo(iCam);	
+	return m_pImpl->GetCameraInfo(iCam);
 }
 

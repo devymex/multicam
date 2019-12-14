@@ -16,14 +16,16 @@ int main(int nArgCnt, char *ppArgs[]) {
 	CTimer t;
 	std::vector<double> cycleTimer;
 	for (int iFrame = 1; ; ++iFrame) {
-		std::vector<cv::Mat> images;
+		std::vector<cv::cuda::GpuMat> images;
 		multiCam.GetImages(images);
 		for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
 			auto &img = images[iCam];
 			if (!img.empty()) {
-				//cv::resize(img, img, img.size() / 4);
+				//cv::cuda::GpuMat resizedImg;
+				//cv::cuda::resize(img, resizedImg, img.size() / 4);
 				std::string strName = "cam" + std::to_string(iCam);
-				cv::imshow(strName, img);
+				cv::Mat showImg(img);
+				cv::imshow(strName, showImg);
 			}
 		}
 		cycleTimer.push_back(t.Reset());
