@@ -6,7 +6,7 @@
 
 class PostProcessor {
 public:
-	PostProcessor();
+	PostProcessor(int nDevID = -1);
 	~PostProcessor();
 
 	void Process(flir::ImagePtr pRaw, cv::cuda::GpuMat &dstImg);
@@ -17,6 +17,7 @@ private:
 private:
 	uint32_t m_nBufSize;
 	uint8_t *m_pBuffer;
+	int m_nDevID;
 };
 
 #endif //__POST_PROC_HPP

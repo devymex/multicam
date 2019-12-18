@@ -16,14 +16,14 @@ inline void cudaAssert(cudaError_t code, const char *file, int line) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "CUDA Failed: %s %s %d\n",
 				cudaGetErrorString(code), file, line);
-		exit(code);
+		throw code;
 	}
 }
 
 inline void nppAssert(NppStatus code, const char *file, int line) {
 	if (code != 0) {
 		fprintf(stderr, "NPP Failed: %d %s %d\n", (int)code, file, line);
-		exit((int)code);
+		throw code;
 	}
 }
 
@@ -102,7 +102,15 @@ void FlirBayer2GpuMat(flir::ImagePtr pImg, cv::cuda::GpuMat &dstImg,
 			srcImgSize, channelOrder));
 }
 
-PostProcessor::PostProcessor() : m_pBuffer(nullptr) {
+PostProcessor::PostProcessor(int nDevID)
+		: m_pBuffer(nullptr)
+		, m_nBufSize(0) {
+	int nDevCnt = 0;
+	CUDA_VERIFY(cudaGetDeviceCount(&nDevCnt));
+	if (nDevID < 0 || nDevID >= nDevCnt) {
+		CUDA_VERIFY(cudaGetDevice(&nDevID));
+	}
+	m_nDevID = nDevID;
 }
 
 PostProcessor::~PostProcessor() {
@@ -112,6 +120,7 @@ PostProcessor::~PostProcessor() {
 }
 
 void PostProcessor::Process(flir::ImagePtr pRaw, cv::cuda::GpuMat &dstImg) {
+	CUDA_VERIFY(cudaSetDevice(m_nDevID));
 	auto ReqBuf = std::bind(&PostProcessor::__RequestBuffer,
 			this, std::placeholders::_1);
 	if (pRaw->GetPixelFormat() == flir::PixelFormat_YUV8_UYV) {

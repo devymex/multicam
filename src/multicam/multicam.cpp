@@ -17,7 +17,6 @@
 #include "flir_inst.hpp"
 #include "post_proc.hpp"
 
-
 class MultipleCameras::MultipleCamerasImpl {
 public:
 	MultipleCamerasImpl(const std::string &strTriggerDevice) {
@@ -41,15 +40,26 @@ public:
 		}
 	}
 
-	void Initialize(uint32_t nExpoMicroSec, const std::string &strConfRoot) {
+	void Initialize(uint32_t nExpoMicroSec, const std::string &strConfRoot,
+			std::vector<int> gpuIds) {
+		uint32_t nCamCnt = GetCameraCount();
+		CHECK_GT(nCamCnt, 0);
+		if (gpuIds.empty()) {
+			gpuIds.resize(nCamCnt, -1);
+		} else {
+			CHECK_EQ((int)gpuIds.size(), nCamCnt);
+		}
+
 		if (m_pTrigger != nullptr) {
 			m_pTrigger->SetDelay(nExpoMicroSec);
 		}
+
+		m_PostProcs.clear();
 		auto pCamList = FlirInstance::GetCameraList();
-		CHECK_GT(pCamList->GetSize(), 0);
-		for (uint32_t i = 0; i < pCamList->GetSize(); ++i) {
+		for (uint32_t i = 0; i < nCamCnt; ++i) {
 			__InitializeCamera(pCamList->GetByIndex(i),
 					nExpoMicroSec, strConfRoot);
+			m_PostProcs.emplace_back(gpuIds[i]);
 		}
 		(*m_pTrigger)(500 * 1000);
 	}
@@ -115,10 +125,11 @@ private:
 		if (rawImgPtrs.size() == nCamCnt) {
 			m_ImgBuf.resize(nCamCnt);
 			//CTimer t;
+#pragma omp parallel for
 			for (uint32_t i = 0; i < nCamCnt; ++i) {
 				if (rawImgPtrs[i].IsValid()) {
 					if (!rawImgPtrs[i]->IsIncomplete()) {
-						m_PostProcessor.Process(rawImgPtrs[i], m_ImgBuf[i]);
+						m_PostProcs[i].Process(rawImgPtrs[i], m_ImgBuf[i]);
 					}
 					rawImgPtrs[i]->Release();
 				}
@@ -222,7 +233,7 @@ private:
 	std::vector<cv::cuda::GpuMat> m_ImgBuf;
 	std::thread m_WorkerThread;
 	std::thread m_TriggerThread;
-	PostProcessor m_PostProcessor;
+	std::vector<PostProcessor> m_PostProcs;
 };
 
 MultipleCameras::MultipleCameras(const std::string &strTriggerDevice) {
@@ -234,8 +245,8 @@ MultipleCameras::~MultipleCameras() {
 }
 
 void MultipleCameras::Initialize(uint32_t nExpoMicroSec,
-		const std::string &strConfRoot) {
-	m_pImpl->Initialize(nExpoMicroSec, strConfRoot);
+		const std::string &strConfRoot, const std::vector<int> &gpuIds) {
+	m_pImpl->Initialize(nExpoMicroSec, strConfRoot, gpuIds);
 }
 
 void MultipleCameras::GetImages(std::vector<cv::cuda::GpuMat> &images) {

@@ -16,7 +16,8 @@ public:
 
 	~MultipleCameras();
 
-	void Initialize(uint32_t nExpoMicroSec, const std::string &strConfRoot);
+	void Initialize(uint32_t nExpoMicroSec, const std::string &strConfRoot,
+			const std::vector<int> &gpuIds = {});
 
 	void GetImages(std::vector<cv::cuda::GpuMat> &images);
 

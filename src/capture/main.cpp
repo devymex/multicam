@@ -12,7 +12,7 @@ int main(int nArgCnt, char *ppArgs[]) {
 		strTriggerDevice = ppArgs[1];
 	}
 	MultipleCameras multiCam(strTriggerDevice);
-	multiCam.Initialize(16000, "./config");
+	multiCam.Initialize(16000, "./config", {0, 1});
 	CTimer t;
 	std::vector<double> cycleTimer;
 	for (int iFrame = 1; ; ++iFrame) {
