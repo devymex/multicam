@@ -33,6 +33,7 @@ void ReallocGpuMat8U(NppiSize srcSize, int nChannels, cv::cuda::GpuMat &dstImg) 
 	cv::Size imgSize(srcSize.width, srcSize.height);
 	int nSrcType = CV_MAKETYPE(CV_8U, nChannels);
 	if (dstImg.size() != imgSize || dstImg.type() != nSrcType) {
+		LOG(INFO) << "realloc: " << imgSize << ", " << dstImg.type();
 		dstImg = cv::cuda::GpuMat(imgSize, nSrcType);
 	}
 }

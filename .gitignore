@@ -3,3 +3,5 @@ build/
 *.caffemodel
 *.prototxt
 .vscode/
+*.png
+*.py

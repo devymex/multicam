@@ -3,7 +3,7 @@
 
 flir::CameraList* FlirInstance::GetCameraList() {
 	static FlirInstance inst_;
-		return &inst_.m_CamList;
+	return &inst_.m_CamList;
 }
 
 FlirInstance::FlirInstance() {

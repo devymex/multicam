@@ -12,19 +12,19 @@ int main(int nArgCnt, char *ppArgs[]) {
 		strTriggerDevice = ppArgs[1];
 	}
 	MultipleCameras multiCam(strTriggerDevice);
-	multiCam.Initialize(16000, "./config", {0, 1});
+	multiCam.Initialize(16000, "./config", {0});
 	CTimer t;
 	std::vector<double> cycleTimer;
+	std::vector<cv::cuda::GpuMat> images;
 	for (int iFrame = 1; ; ++iFrame) {
-		std::vector<cv::cuda::GpuMat> images;
 		multiCam.GetImages(images);
 		for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
 			auto &img = images[iCam];
 			if (!img.empty()) {
-				//cv::cuda::GpuMat resizedImg;
-				//cv::cuda::resize(img, resizedImg, img.size() / 4);
+				cv::cuda::GpuMat resizedImg;
+				cv::cuda::resize(img, resizedImg, img.size() / 4);
 				std::string strName = "cam" + std::to_string(iCam);
-				cv::Mat showImg(img);
+				cv::Mat showImg(resizedImg);
 				cv::imshow(strName, showImg);
 			}
 		}
@@ -41,7 +41,8 @@ int main(int nArgCnt, char *ppArgs[]) {
 				if (!img.empty()) {
 					std::string strName = "frm" + std::to_string(iFrame)
 							+ "_cam" + std::to_string(iCam) + ".png";
-					cv::imwrite(strName, img);
+					cv::Mat saveImg(img);
+					cv::imwrite(strName, saveImg);
 				}
 			}
 		} else if (27 == nKey) {

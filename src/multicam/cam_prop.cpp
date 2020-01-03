@@ -52,7 +52,12 @@ void SetParam<const char*>(flir::GenApi::INodeMap &nodeMap,
 	auto pEntry = pNode->GetEntryByName(pValue);
 	CHECK(flir::GenApi::IsAvailable(pEntry)) << pValue;
 	CHECK(flir::GenApi::IsReadable(pEntry)) << pValue;
-	pNode->SetIntValue(pEntry->GetValue());
+	try {
+		pNode->SetIntValue(pEntry->GetValue());
+	} catch (...) {
+		LOG(INFO) << "Failed to set key '" << strKey
+				<< "' to value '" << pValue << "'";
+	}
 }
 
 template<typename _Ty>

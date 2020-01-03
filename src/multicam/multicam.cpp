@@ -125,13 +125,20 @@ private:
 		if (rawImgPtrs.size() == nCamCnt) {
 			m_ImgBuf.resize(nCamCnt);
 			//CTimer t;
-#pragma omp parallel for
+			std::vector<std::thread> pool;
 			for (uint32_t i = 0; i < nCamCnt; ++i) {
-				if (rawImgPtrs[i].IsValid()) {
-					if (!rawImgPtrs[i]->IsIncomplete()) {
-						m_PostProcs[i].Process(rawImgPtrs[i], m_ImgBuf[i]);
+				pool.emplace_back([&](int idx) {
+					if (rawImgPtrs[idx].IsValid()) {
+						if (!rawImgPtrs[idx]->IsIncomplete()) {
+							m_PostProcs[idx].Process(rawImgPtrs[idx], m_ImgBuf[idx]);
+						}
+						rawImgPtrs[idx]->Release();
 					}
-					rawImgPtrs[i]->Release();
+				}, i);
+			}
+			for (uint32_t i = 0; i < nCamCnt; ++i) {
+				if (pool[i].joinable()) {
+					pool[i].join();
 				}
 			}
 			//LOG(INFO) << t.Reset();
