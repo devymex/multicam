@@ -12,7 +12,13 @@ int main(int nArgCnt, char *ppArgs[]) {
 		strTriggerDevice = ppArgs[1];
 	}
 	MultipleCameras multiCam(strTriggerDevice);
-	multiCam.Initialize(16000, "./config", {0});
+
+	std::vector<int> gpuIds;
+	for (uint32_t i = 0; i < multiCam.GetCameraCount(); ++i) {
+		gpuIds.push_back(i % cv::cuda::getCudaEnabledDeviceCount());
+	}
+	multiCam.Initialize(16000, "./config", gpuIds);
+
 	CTimer t;
 	std::vector<double> cycleTimer;
 	std::vector<cv::cuda::GpuMat> images;
@@ -21,8 +27,9 @@ int main(int nArgCnt, char *ppArgs[]) {
 		for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
 			auto &img = images[iCam];
 			if (!img.empty()) {
+				cv::cuda::setDevice(gpuIds[iCam]);
 				cv::cuda::GpuMat resizedImg;
-				cv::cuda::resize(img, resizedImg, img.size() / 4);
+				cv::cuda::resize(img, resizedImg, img.size() / 2);
 				std::string strName = "cam" + std::to_string(iCam);
 				cv::Mat showImg(resizedImg);
 				cv::imshow(strName, showImg);

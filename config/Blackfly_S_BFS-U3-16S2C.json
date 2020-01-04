@@ -1,6 +1,6 @@
 {
 	"PixelFormat": "BayerRG8",
 	"WhiteBalance": [-1.0, -1.0],
-	"Gain": 10,
+	"Gain": 15,
 	"FrameRate": 0
 }

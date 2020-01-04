@@ -267,4 +267,3 @@ uint32_t MultipleCameras::GetCameraCount() const {
 CAMERA_INFO MultipleCameras::GetCameraInfo(uint32_t iCam) const {
 	return m_pImpl->GetCameraInfo(iCam);
 }
-
