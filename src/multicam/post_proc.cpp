@@ -9,6 +9,8 @@
 #include <nppi_color_conversion.h>
 #include <nppi_geometry_transforms.h>
 
+typedef std::function<uint8_t*(size_t)> ALLOCATOR;
+
 #define CUDA_VERIFY(ans) { cudaAssert((ans), __FILE__, __LINE__); }
 #define NPP_VERIFY(ans) { nppAssert((ans), __FILE__, __LINE__); }
 
@@ -26,8 +28,6 @@ inline void nppAssert(NppStatus code, const char *file, int line) {
 		throw code;
 	}
 }
-
-typedef std::function<uint8_t*(size_t)> ALLOCATOR;
 
 void ReallocGpuMat8U(NppiSize srcSize, int nChannels, cv::cuda::GpuMat &dstImg) {
 	cv::Size imgSize(srcSize.width, srcSize.height);

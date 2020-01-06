@@ -1,5 +1,5 @@
 
-FIND_PACKAGE(OpenCV REQUIRED "core;imgcodecs;imgproc;highgui;cudawarping")
+FIND_PACKAGE(OpenCV REQUIRED "core;imgcodecs;imgproc;highgui;cudaarithm;cudaimgproc;cudawarping")
 
 FIND_PACKAGE(Threads REQUIRED)
 
