@@ -56,8 +56,9 @@ int main(int nArgCnt, char *ppArgs[]) {
 			for (int iCam = 0; iCam < (int)images.size(); ++iCam) {
 				auto &img = images[iCam];
 				if (!img.empty()) {
+					auto camInfo = multiCam.GetCameraInfo(iCam);
 					std::string strName = "frm" + std::to_string(iFrame)
-							+ "_cam" + std::to_string(iCam) + ".png";
+							+ "_cam" + camInfo.strDeviceSN + ".png";
 					cv::Mat saveImg(img);
 					cv::imwrite(strName, saveImg);
 				}
