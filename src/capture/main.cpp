@@ -34,11 +34,12 @@ int main(int nArgCnt, char *ppArgs[]) {
 			if (!img.empty()) {
 				cv::cuda::setDevice(gpuIds[iCam]);
 				CTimer t1;
-				cv::cuda::cvtColor(img, tmp1, cv::COLOR_BGR2BGRA);
-				cv::cuda::transpose(tmp1, tmp2);
-				cv::cuda::cvtColor(tmp2, tmp3, cv::COLOR_BGRA2BGR);
-				cv::cuda::flip(tmp3, tmp4, 1);
-				cv::cuda::resize(tmp4, resizedImg, tmp4.size() / 2);
+				// cv::cuda::cvtColor(img, tmp1, cv::COLOR_BGR2BGRA);
+				// cv::cuda::transpose(tmp1, tmp2);
+				// cv::cuda::cvtColor(tmp2, tmp3, cv::COLOR_BGRA2BGR);
+				// cv::cuda::flip(tmp3, tmp4, 1);
+				// img = tmp4;
+				cv::cuda::resize(img, resizedImg, img.size() / 4);
 				resizedImg.download(showImg);
 				dProcTime += t1.Reset();
 				cv::imshow("cam" + std::to_string(iCam), showImg);
